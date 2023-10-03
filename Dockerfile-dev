@@ -1,0 +1,161 @@
+ARG FROM_IMAGE
+FROM ${FROM_IMAGE}
+
+WORKDIR /opt
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        coinor-libclp-dev \
+        curl \
+        feh \
+        influxdb-client \
+        less \
+        libcanberra-gtk-module \
+        libz-dev \
+        libbz2-dev \
+        libncurses5-dev libncursesw5-dev \
+        maven \
+        openjdk-11-jdk \
+        openssh-client \
+        openssl \
+        python3 \
+        python3-pip \
+        rsync \
+        unzip \
+        vim \
+        zlib1g-dev \
+    && pkg-config --cflags --libs clp
+
+ENV TZ=America/New_York
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata
+
+# user setup
+ARG SERVER_USER
+COPY ./docker/assets/dev/user/.bashrc /home/${SERVER_USER}/.bashrc
+RUN chown ${SERVER_USER}:${SERVER_USER} /home/${SERVER_USER}/.bashrc
+
+# system scripts setup
+RUN chmod 755 /sbin/docker-* \
+    && sed -i "6i# Dockerfile-dev\nexport SERVER_USER=\"${SERVER_USER}\"\nexport SERVER_GROUP=\"${SERVER_USER}\"" /sbin/docker-start-container.sh
+
+# ------------------------------------------------------
+# Basic developer system setup
+# ------------------------------------------------------
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ccache \
+    gdb \
+    git \
+    git-core \
+    git-man \
+    netcat \
+    nano \
+    sudo \
+    unzip
+
+# Configure sudo for dev user
+ARG SERVER_USER
+RUN usermod -a -G sudo ${SERVER_USER}
+
+# setup .bashrc to source .bashrc_dev if available
+RUN echo "\n# developer setup\nif [ -f ~/.bashrc_dev ]; then\n    . ~/.bashrc_dev\nfi" >> /home/${SERVER_USER}/.bashrc
+
+# system setup
+COPY ./docker/assets/dev/system/etc /etc
+RUN chmod 755 /etc/sudoers.d/sudoers-custom
+RUN sed -i "6iexport SERVER_USER=\"${SERVER_USER}\"\nexport SERVER_GROUP=\"${SERVER_USER}\"" /sbin/docker-start-container.sh
+
+# workspace setup
+RUN mkdir -p /workspace && \
+    chown ${SERVER_USER}:${SERVER_USER} /workspace
+
+# home dir setup
+COPY ./docker/assets/dev/user /home/${SERVER_USER}
+RUN mkdir /home/${SERVER_USER}/bin \
+    && echo "PATH=/home/go/bin:${PATH}" >> /home/${SERVER_USER}/.bashrc
+
+## development tools: comment/uncomment as appropriate
+##
+# ------------------------------------------------------
+# vim
+# ------------------------------------------------------
+ARG PP_DEV_USE_VIM=false
+RUN if [ "$PP_DEV_USE_VIM" = "true" ]; then \
+  add-apt-repository ppa:jonathonf/vim && \
+  apt update && \
+  apt install -y vim && \
+  curl -s -fLo /home/${SERVER_USER}/.vim/autoload/plug.vim --create-dirs \
+         https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim && \
+  vim -u /home/${SERVER_USER}/.vim/autoload/plug.vim \
+        --not-a-term \
+        +'so /home/${SERVER_USER}/.vimrc' \
+        +'autocmd VimEnter * PlugInstall --sync | source $MYVIMRC' \
+        +qa \
+        > /dev/null && \
+        mkdir -m 777 /home/${SERVER_USER}/.vim/plugged; \
+  fi
+
+# ------------------------------------------------------
+# VS Code
+# ------------------------------------------------------
+RUN wget -q https://packages.microsoft.com/keys/microsoft.asc -O - \
+    | apt-key add -
+RUN add-apt-repository "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main"
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends code
+RUN echo "export DONT_PROMPT_WSL_INSTALL=1" >> /home/${SERVER_USER}/.bashrc
+# Get rid of the annoying WSL message, and pick a theme that makes sessions distinct.
+RUN if [ ! -f  /home/${SERVER_USER}/.config/Code/User/settings.json ]; then \
+    mkdir -p /home/${SERVER_USER}/.config/Code/User \
+    && echo '{\n    "workbench.colorTheme": "Abyss"\n}' > /home/${SERVER_USER}/.config/Code/User/settings.json ; \
+    fi
+
+##------------------------------------------------------
+## IntelliJ IDEA
+##------------------------------------------------------
+# RUN wget -q https://download-cf.jetbrains.com/idea/ideaIC-2023.2.tar.gz -O - \
+#     | tar -xz -C /opt
+# RUN echo '\nPATH=${PATH}:/opt/idea-IC-221.5921.22/bin\nalias intellij="idea.sh > /dev/null 2>&1 &"\n' >> /home/${SERVER_USER}/.bashrc
+
+##------------------------------------------------------
+## Ananconda
+##------------------------------------------------------
+#RUN SHA256SUM="a7c0afe862f6ea19a596801fc138bde0463abcbce1b753e8d5c474b506a2db2d" \
+#    && echo "${SHA256SUM} anaconda.sh" > shasum \
+#    && wget -q https://repo.anaconda.com/archive/Anaconda3-2022.05-Linux-x86_64.sh -O anaconda.sh \
+#    && sha256sum --check --status shasum \
+#    && /bin/bash anaconda.sh -b -p /opt/conda \
+#    && rm anaconda.sh shasum \
+#    && ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh \
+#    && echo ". /opt/conda/etc/profile.d/conda.sh" >> /home/${SERVER_USER}/.bashrc \
+#    && echo "conda activate base" >> /home/${SERVER_USER}/.bashrc \
+#    && find /opt/conda/ -follow -type f -name '*.a' -delete \
+#    && find /opt/conda/ -follow -type f -name '*.js.map' -delete \
+#    && /opt/conda/bin/conda clean -afy
+#
+# RUN chmod a+x /opt/Anaconda3-2022.05-Linux-x86_64.sh
+# RUN su - go -c "/opt/Anaconda3-2022.05-Linux-x86_64.sh -b"
+
+# ------------------------------------------
+# RTI
+# ------------------------------------------
+ADD rti/connextdds-py.zip /home/${SERVER_USER}/
+RUN unzip /home/${SERVER_USER}/connextdds-py.zip -d /home/${SERVER_USER} \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends python3-dev python3-tk \
+    && pip install pysimplegui \
+    && cd /home/${SERVER_USER}/connextdds-py/ \
+    && python3 configure.py --nddshome /opt/rti_connext_dds-6.1.2 --jobs 4 x64Linux4gcc7.3.0 \
+    && pip install .
+
+COPY bashrc_include* /home/${SERVER_USER}
+RUN for incfile in /home/${SERVER_USER}/bashrc_include* ; do if [ -f ${incfile} ] ; then cat ${incfile} >> /home/${SERVER_USER}/.bashrc ; fi; done
+
+RUN chown ${SERVER_USER}:${SERVER_USER} /home/${SERVER_USER}/.* /home/${SERVER_USER}/*
+
+# clean up
+RUN apt-get -y autoremove \
+    && apt-get clean autoclean \
+    && rm -fr /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
+
+ENTRYPOINT ["/sbin/docker-start-container.sh"]

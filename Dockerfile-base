@@ -1,0 +1,63 @@
+ARG FROM_IMAGE
+FROM ${FROM_IMAGE}
+
+# install basic system packages
+ARG SERVER_USER
+COPY ./docker/assets/dev/system/sbin/ /sbin
+RUN chmod 755 /sbin/docker-*
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        apt-utils \
+        apt \
+        software-properties-common
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        autoconf \
+        automake \
+        build-essential \
+        ca-certificates \
+        coinor-clp \
+        dialog \
+        gnupg \
+        iproute2 \
+        libxkbcommon0 \
+        libgbm1 \
+        libtool \
+        make \
+        net-tools \
+        pkg-config \
+        perl \
+        ssh \
+        systemd \
+        systemd-sysv \
+        wget
+
+# Setup the server user
+RUN mkdir /opt >/dev/null 2>&1 || true \
+    && useradd -m ${SERVER_USER} -G dialout,video,plugdev -p ${SERVER_USER} -s /bin/bash \
+    && echo "${SERVER_USER}:${SERVER_USER}" | chpasswd
+WORKDIR /opt
+
+RUN mkdir /home/${SERVER_USER}/rti
+COPY ./rti/rti_connext_dds-6.1.2-pro-host-x64Linux.run \
+    ./rti/rti_connext_dds-6.1.2-pro-target-x64Linux4gcc7.3.0.rtipkg \
+    ./rti/rti_license.dat \
+    ./rti/connextdds-py.zip /home/${SERVER_USER}/rti/
+RUN /home/${SERVER_USER}/rti/rti_connext_dds-6.1.2-pro-host-x64Linux.run --mode unattended \
+    && /opt/rti_connext_dds-6.1.2/bin/rtipkginstall -u /home/${SERVER_USER}/rti/rti_connext_dds-6.1.2-pro-target-x64Linux4gcc7.3.0.rtipkg \
+    && cp /home/${SERVER_USER}/rti/rti_license.dat /opt/rti_connext_dds-6.1.2
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        debconf-utils
+COPY ./docker/assets/selections.conf /opt
+RUN debconf-set-selections < /opt/selections.conf \
+    && apt-get install -y --no-install-recommends \
+        keyboard-configuration
+
+# clean up
+RUN apt-get -y autoremove \
+    && apt-get clean autoclean \
+    && rm -fr /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
