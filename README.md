@@ -1,7 +1,7 @@
 # kuka-dev
 
 ## General
-A development environment for the Kuka project at Medacuity, based on 
+A development environment for the Trossen RX-200 robotic arm at Medacuity, based on 
 Bobs-dev-container, a Docker-based development environment I've found useful
 
 This is a basic environment I've used for a few projects. It incorporates ideas and approaches from various past colleagues, most notably Shawn Shaffert, previously at GreyOrange. 
@@ -24,18 +24,6 @@ If you create a file named .bashrc_dev, it will be appended to the .bashrc in th
 Dependencies: you need Docker (obviously), make, probably other things.
 This is obviously a work in progress
 
-## Kuka stuff
-You should add the following before building the docker:
-* create a directory named rti/, and put in it:
-  * your RTI Linux host .run file (rti_connext_dds-6.1.2-pro-host-x64Linux.run)
-  * A Linux target package (rti_connext_dds-6.1.2-pro-target-x64Linux4gcc7.3.0.rtipkg)
-  * Your RTI license file (rti_license.dat)
-  * The backup of Elizabeth's antique version of the RTI python lib (connextdds-py.zip)
+## RX-200 stuff
+* Nothing, so far
 
-Clone the Kuka repo (helpufully and not at all vaguely named "source") from https://bitbucket.org/medacuityrobotics/source/src/main/
-
-Create a directory named workspace/, and make a symbolic link in it to the 'source' repo. Inside this repo, create a directory named common-idl (don't check this into the source repo by accident!) and copy the three xml files from source/src/idl to source/src/common-idl. 
-
-Now you should be able to go to source/src/dds-emulator/test/pyGui, and type:
-
-    python3 dds_emulator.py

@@ -3,9 +3,9 @@ REPOSITORY_ROOT := $$( if [ ${IS_GIT_DIR} = "yes" ] ; then git rev-parse --show-
 VERSION := $$( if [ ${IS_GIT_DIR} = "yes" ] ; then git rev-parse --short HEAD ; else echo x ; fi )
 VERSION_LONG := $$( if [ ${IS_GIT_DIR} = "yes" ] ; then git rev-parse HEAD ; else echo xxx ; fi )
 
-DOCKER_ROOT_IMAGE := ubuntu:22.04
+DOCKER_ROOT_IMAGE := ubuntu:20.04
 ORGANIZATION := ma
-PROJECT := kuka-dev
+PROJECT := rx200-ros1-dev
 DOCKER_IMAGE_TAG_ROOT := ${ORGANIZATION}/${PROJECT}_img
 DOCKER_CONTAINER_NAME_ROOT := ${PROJECT}
 SERVER_USER := ma

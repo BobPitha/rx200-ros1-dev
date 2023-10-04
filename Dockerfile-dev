@@ -19,15 +19,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         openssl \
         python3 \
         python3-pip \
+        python3-dev \
         rsync \
         unzip \
         vim \
         zlib1g-dev \
     && pkg-config --cflags --libs clp
-
-ENV TZ=America/New_York
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata
 
 # user setup
 ARG SERVER_USER
@@ -73,6 +70,18 @@ RUN mkdir -p /workspace && \
 COPY ./docker/assets/dev/user /home/${SERVER_USER}
 RUN mkdir /home/${SERVER_USER}/bin \
     && echo "PATH=/home/go/bin:${PATH}" >> /home/${SERVER_USER}/.bashrc
+
+# ------------------------------------------------------
+# ROS
+# ------------------------------------------------------
+RUN echo "source /opt/ros/noetic/setup.bash" >> /home/${SERVER_USER}/.bashrc \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python3-rosdep \
+        python3-rosinstall \
+        python3-rosinstall-generator \
+        python3-wstool \
+        build-essential
 
 ## development tools: comment/uncomment as appropriate
 ##
@@ -135,18 +144,6 @@ RUN if [ ! -f  /home/${SERVER_USER}/.config/Code/User/settings.json ]; then \
 #
 # RUN chmod a+x /opt/Anaconda3-2022.05-Linux-x86_64.sh
 # RUN su - go -c "/opt/Anaconda3-2022.05-Linux-x86_64.sh -b"
-
-# ------------------------------------------
-# RTI
-# ------------------------------------------
-ADD rti/connextdds-py.zip /home/${SERVER_USER}/
-RUN unzip /home/${SERVER_USER}/connextdds-py.zip -d /home/${SERVER_USER} \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends python3-dev python3-tk \
-    && pip install pysimplegui \
-    && cd /home/${SERVER_USER}/connextdds-py/ \
-    && python3 configure.py --nddshome /opt/rti_connext_dds-6.1.2 --jobs 4 x64Linux4gcc7.3.0 \
-    && pip install .
 
 COPY bashrc_include* /home/${SERVER_USER}
 RUN for incfile in /home/${SERVER_USER}/bashrc_include* ; do if [ -f ${incfile} ] ; then cat ${incfile} >> /home/${SERVER_USER}/.bashrc ; fi; done

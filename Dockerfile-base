@@ -19,6 +19,7 @@ RUN apt-get update \
         build-essential \
         ca-certificates \
         coinor-clp \
+        curl \
         dialog \
         gnupg \
         iproute2 \
@@ -34,20 +35,22 @@ RUN apt-get update \
         systemd-sysv \
         wget
 
+ENV TZ=America/New_York
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata
+
+# basic ROS packages
+RUN echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" \
+            > /etc/apt/sources.list.d/ros-latest.list \
+    && curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add - \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ros-noetic-desktop-full
+
 # Setup the server user
 RUN mkdir /opt >/dev/null 2>&1 || true \
     && useradd -m ${SERVER_USER} -G dialout,video,plugdev -p ${SERVER_USER} -s /bin/bash \
     && echo "${SERVER_USER}:${SERVER_USER}" | chpasswd
 WORKDIR /opt
-
-RUN mkdir /home/${SERVER_USER}/rti
-COPY ./rti/rti_connext_dds-6.1.2-pro-host-x64Linux.run \
-    ./rti/rti_connext_dds-6.1.2-pro-target-x64Linux4gcc7.3.0.rtipkg \
-    ./rti/rti_license.dat \
-    ./rti/connextdds-py.zip /home/${SERVER_USER}/rti/
-RUN /home/${SERVER_USER}/rti/rti_connext_dds-6.1.2-pro-host-x64Linux.run --mode unattended \
-    && /opt/rti_connext_dds-6.1.2/bin/rtipkginstall -u /home/${SERVER_USER}/rti/rti_connext_dds-6.1.2-pro-target-x64Linux4gcc7.3.0.rtipkg \
-    && cp /home/${SERVER_USER}/rti/rti_license.dat /opt/rti_connext_dds-6.1.2
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
