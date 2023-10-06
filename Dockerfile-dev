@@ -83,6 +83,37 @@ RUN echo "source /opt/ros/noetic/setup.bash" >> /home/${SERVER_USER}/.bashrc \
         python3-wstool \
         build-essential
 
+# From interbotix-ros
+RUN apt update \
+    apt install -y --no-install-recommends \
+        catkin \
+        git \
+        g++ \
+        python3-rosdep2 \
+        apt-file
+RUN mkdir -p /root/interbotix_ws/src
+WORKDIR /root/interbotix_ws
+RUN catkin_make
+WORKDIR /root/interbotix_ws/src
+RUN git clone 
+
+# RX-200 stuff
+RUN rosdep init \
+    && rosdep update \
+    && apt update \
+    && apt install -y --no-install-recommends \
+        ros-noetic-dynamixel-sdk \
+        ros-noetic-moveit \
+        ros-noetic-moveit-visual-tools \
+        ros-noetic-apriltag-ros \
+        ros-noetic-joy \
+        ros-noetic-joint-trajectory-controller \
+        ros-noetic-realsense2-camera \
+        ros-noetic-effort-controllers \
+    && curl 'https://raw.githubusercontent.com/Interbotix/interbotix_ros_manipulators/main/interbotix_ros_xsarms/install/amd64/xsarm_amd64_install.sh' > xsarm_amd64_install.sh \
+    && chmod +x xsarm_amd64_install.sh
+    # && ./xsarm_amd64_install.sh -d noetic -n
+
 ## development tools: comment/uncomment as appropriate
 ##
 # ------------------------------------------------------
