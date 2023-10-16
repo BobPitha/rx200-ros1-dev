@@ -84,18 +84,17 @@ RUN echo "source /opt/ros/noetic/setup.bash" >> /home/${SERVER_USER}/.bashrc \
         build-essential
 
 # From interbotix-ros
-RUN apt update \
-    apt install -y --no-install-recommends \
-        catkin \
-        git \
-        g++ \
-        python3-rosdep2 \
-        apt-file
-RUN mkdir -p /root/interbotix_ws/src
-WORKDIR /root/interbotix_ws
-RUN catkin_make
-WORKDIR /root/interbotix_ws/src
-RUN git clone 
+# RUN apt-get update \
+#     && apt-get install -y --no-install-recommends \
+#         catkin \
+#         git \
+#         g++ \
+#         python3-rosdep2 \
+#         apt-file
+# RUN mkdir -p /root/interbotix_ws/src
+# WORKDIR /root/interbotix_ws
+# RUN catkin_make
+# WORKDIR /root/interbotix_ws/src
 
 # RX-200 stuff
 RUN rosdep init \
@@ -111,8 +110,8 @@ RUN rosdep init \
         ros-noetic-realsense2-camera \
         ros-noetic-effort-controllers \
     && curl 'https://raw.githubusercontent.com/Interbotix/interbotix_ros_manipulators/main/interbotix_ros_xsarms/install/amd64/xsarm_amd64_install.sh' > xsarm_amd64_install.sh \
-    && chmod +x xsarm_amd64_install.sh
-    # && ./xsarm_amd64_install.sh -d noetic -n
+    && chmod +x xsarm_amd64_install.sh \
+    && ./xsarm_amd64_install.sh -d noetic -n -p /opt/interbotix_ws 
 
 ## development tools: comment/uncomment as appropriate
 ##
